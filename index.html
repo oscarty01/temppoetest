@@ -1,625 +1,1780 @@
-<!DOCTYPE html><html lang="en"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shape Puzzle Solver</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    .cell {
-      width: 64px;
-      height: 64px;
-      border-radius: 14px;
-      border: 1px solid #cbd5e1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      font-weight: 700;
-      cursor: pointer;
-      user-select: none;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      transition: 0.15s ease;
-      background: white;
-    }
-    .cell:hover { transform: translateY(-1px); background: #f8fafc; }
-    .label {
-      width: 64px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      color: #64748b;
-      font-size: 28px;
-    }
-    .palette-btn {
-      min-width: 56px;
-      padding: 10px 16px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .selected-tool {
-      outline: 3px solid #94a3b8;
-      outline-offset: 2px;
-    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
 
-    .sym-A { background: #e0f2fe; border-color: #7dd3fc; color: #075985; }
-    .sym-B { background: #e0e7ff; border-color: #a5b4fc; color: #3730a3; }
-    .sym-C { background: #dcfce7; border-color: #86efac; color: #166534; }
-    .sym-D { background: #ffe4e6; border-color: #fda4af; color: #9f1239; }
-    .sym-E { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
-    .sym-F { background: #f3e8ff; border-color: #d8b4fe; color: #6b21a8; }
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    .sym-default { background: #e2e8f0; border-color: #cbd5e1; color: #334155; }
-    .sym-question { background: #fef3c7; border-color: #fbbf24; color: #92400e; }
+    <title>Timeline Painter</title>
 
-    .grid-wrap {
-      overflow-x: auto;
-      padding-bottom: 8px;
-    }
+    <style>
+        :root {
+            --background: #f4f6f8;
+            --panel: #ffffff;
+            --border: #cbd2d9;
+            --dark-border: #9aa5b1;
+            --text: #17202a;
+            --muted: #637381;
+            --primary: #2563eb;
+            --danger: #dc2626;
+            --name-width: 160px;
+            --cell-height: 54px;
+        }
 
-    @media (max-width: 640px) {
-      .cell, .label {
-        width: 52px;
-        height: 52px;
-        font-size: 22px;
-      }
-    }
-  </style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            min-height: 100%;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--background);
+            color: var(--text);
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .page {
+            width: 100%;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+
+        .subtitle {
+            margin: 5px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(16, 24, 40, 0.06);
+        }
+
+        .settings {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .field label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .field input,
+        .field select {
+            height: 40px;
+            padding: 0 10px;
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+        }
+
+        .field input:focus,
+        .field select:focus,
+        .row-name:focus {
+            outline: 3px solid rgba(37, 99, 235, 0.17);
+            border-color: var(--primary);
+        }
+
+        .normal-button {
+            min-height: 40px;
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: white;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .normal-button:hover {
+            background: #f8fafc;
+            border-color: var(--dark-border);
+        }
+
+        .primary-button {
+            color: white;
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .primary-button:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+
+        .danger-button {
+            color: var(--danger);
+        }
+
+        .display-button {
+            color: white;
+            background: #047857;
+            border-color: #047857;
+        }
+
+        .display-button:hover {
+            color: white;
+            background: #065f46;
+            border-color: #065f46;
+        }
+
+        .toolbar {
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .toolbar-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .toolbar-heading strong {
+            font-size: 15px;
+        }
+
+        .tool-help {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .event-button,
+        .eraser-button {
+            position: relative;
+            min-width: 48px;
+            height: 46px;
+            padding: 0 12px;
+            border: 3px solid transparent;
+            border-radius: 9px;
+            font-size: 16px;
+            font-weight: 900;
+            transition:
+                transform 100ms ease,
+                box-shadow 100ms ease;
+        }
+
+        .event-button:hover,
+        .eraser-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .event-button.selected,
+        .eraser-button.selected {
+            z-index: 1;
+            border-color: #111827;
+            box-shadow:
+                0 0 0 3px white,
+                0 0 0 5px #111827;
+        }
+
+        .eraser-button {
+            min-width: 90px;
+            background: white;
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 8px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .display-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .display-controls .field select {
+            min-width: 140px;
+        }
+
+        .schedule-panel {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .schedule-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .schedule-title h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .selected-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .selected-swatch {
+            width: 25px;
+            height: 25px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #111;
+            border: 1px solid rgba(0, 0, 0, 0.35);
+            border-radius: 5px;
+            font-weight: 900;
+        }
+
+        .timeline-wrapper {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+
+        .timeline {
+            width: 100%;
+            min-width: 0;
+            padding-bottom: 8px;
+        }
+
+        .timeline-header,
+        .timeline-row {
+            display: grid;
+            width: 100%;
+            grid-template-columns:
+                var(--name-width)
+                repeat(var(--columns), minmax(0, 1fr));
+        }
+
+        .timeline-header {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .corner {
+            position: sticky;
+            left: 0;
+            z-index: 8;
+            min-width: 0;
+            min-height: 49px;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #1f2937;
+            color: white;
+            border-right: 2px solid white;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .time-label {
+            min-width: 0;
+            min-height: 49px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 4px 2px;
+            background: #1f2937;
+            color: white;
+            border-right: 1px solid #4b5563;
+            text-align: center;
+            font-size: clamp(8px, 0.75vw, 11px);
+            line-height: 1.1;
+        }
+
+        .time-label span {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .time-label small {
+            font-size: inherit;
+        }
+
+        .timeline-row {
+            border-bottom: 1px solid var(--dark-border);
+        }
+
+        .timeline-row:last-child {
+            border-bottom: 0;
+        }
+
+        .row-name-wrap {
+            position: sticky;
+            left: 0;
+            z-index: 4;
+            min-width: 0;
+            min-height: var(--cell-height);
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            background: #eef2f6;
+            border-right: 2px solid var(--dark-border);
+        }
+
+        .row-name {
+            width: 100%;
+            min-width: 0;
+            padding: 7px 8px;
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-weight: 750;
+        }
+
+        .time-cell {
+            min-width: 0;
+            min-height: var(--cell-height);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: white;
+            color: #111827;
+            border-right: 1px solid var(--dark-border);
+            font-size: clamp(11px, 1.1vw, 18px);
+            font-weight: 900;
+            user-select: none;
+            touch-action: none;
+            cursor: crosshair;
+            transition:
+                filter 80ms ease,
+                transform 80ms ease;
+        }
+
+        .time-cell:hover {
+            filter: brightness(0.92);
+            box-shadow:
+                inset 0 0 0 3px rgba(17, 24, 39, 0.4);
+        }
+
+        .time-cell:active {
+            transform: scale(0.95);
+        }
+
+        .time-cell.hour-start {
+            border-left: 3px solid #475569;
+        }
+
+        .empty-message {
+            padding: 50px 20px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .status {
+            min-height: 24px;
+            padding: 8px 2px 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .status.success {
+            color: #047857;
+        }
+
+        .status.error {
+            color: #b91c1c;
+        }
+
+        /*
+         * This button is only visible in distraction-free
+         * timeline display mode.
+         */
+        .exit-display-button {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 1000;
+            display: none;
+            min-height: 40px;
+            padding: 8px 14px;
+            background: #111827;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            font-weight: 800;
+        }
+
+        .exit-display-button:hover {
+            background: #374151;
+        }
+
+        /*
+         * Distraction-free display mode.
+         * This displays the timeline in the HTML page.
+         * It does not open the browser print dialog.
+         */
+        body.timeline-display-mode {
+            --cell-height: 58px;
+            min-height: 100vh;
+            overflow: auto;
+            background: #dfe4ea;
+        }
+
+        body.timeline-display-mode .page {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 64px 18px 24px;
+        }
+
+        body.timeline-display-mode .title-row,
+        body.timeline-display-mode .settings,
+        body.timeline-display-mode .toolbar,
+        body.timeline-display-mode .schedule-title,
+        body.timeline-display-mode .status {
+            display: none !important;
+        }
+
+        body.timeline-display-mode .exit-display-button {
+            display: block;
+        }
+
+        body.timeline-display-mode .schedule-panel {
+            width: 100%;
+            margin: 0 auto;
+            overflow: visible;
+            background: white;
+            border: 0;
+            border-radius: 0;
+            box-shadow: 0 8px 35px rgba(15, 23, 42, 0.2);
+        }
+
+        body.timeline-display-mode.display-landscape
+        .schedule-panel {
+            max-width: 1600px;
+        }
+
+        body.timeline-display-mode.display-portrait
+        .schedule-panel {
+            max-width: 900px;
+        }
+
+        body.timeline-display-mode .timeline-wrapper {
+            width: 100%;
+            max-width: none;
+            overflow: visible;
+            background: white;
+        }
+
+        body.timeline-display-mode .timeline {
+            padding: 0;
+            background: white;
+        }
+
+        body.timeline-display-mode .timeline-header {
+            top: 0;
+        }
+
+        body.timeline-display-mode .row-name {
+            padding: 7px 3px;
+            background: transparent;
+            border-color: transparent;
+            border-radius: 0;
+            outline: none;
+            pointer-events: none;
+        }
+
+        body.timeline-display-mode .time-cell {
+            cursor: default;
+            pointer-events: none;
+            transition: none;
+        }
+
+        body.timeline-display-mode .time-cell:hover {
+            filter: none;
+            box-shadow: none;
+        }
+
+        body.timeline-display-mode .time-cell:active {
+            transform: none;
+        }
+
+        @media (max-width: 700px) {
+            :root {
+                --name-width: 110px;
+            }
+
+            .page {
+                padding: 10px;
+            }
+
+            .title-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .settings {
+                align-items: stretch;
+            }
+
+            .field {
+                flex: 1 1 130px;
+            }
+
+            .settings .normal-button {
+                flex: 1 1 100%;
+            }
+
+            .toolbar-heading {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .action-row {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .display-controls {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .display-controls .field {
+                flex: 1 1 100%;
+            }
+
+            .display-controls .normal-button {
+                flex: 1 1 100%;
+            }
+
+            .time-label {
+                padding: 3px 1px;
+                font-size: 7px;
+            }
+
+            .time-cell {
+                font-size: 11px;
+            }
+
+            .row-name-wrap {
+                padding: 5px;
+            }
+
+            .row-name {
+                padding: 7px 5px;
+                font-size: 12px;
+            }
+
+            body.timeline-display-mode {
+                --name-width: 105px;
+                --cell-height: 52px;
+            }
+
+            body.timeline-display-mode .page {
+                padding: 62px 6px 10px;
+            }
+
+            body.timeline-display-mode .schedule-panel {
+                box-shadow: none;
+            }
+
+            .exit-display-button {
+                top: 8px;
+                right: 8px;
+            }
+        }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-900 min-h-screen">
-  <div class="max-w-6xl mx-auto p-4 space-y-4">
-    <div class="bg-white rounded-3xl shadow p-5">
-      <h1 class="text-3xl font-bold">Shape Puzzle Solver</h1>
-      <p class="mt-2 text-sm text-slate-600">
-        Each symbol can appear only once per row and column. Put one <strong>?</strong> in the target cell, then click <strong>Solve ?</strong>.
-      </p>
-    </div>
 
-    <div class="grid lg:grid-cols-3 gap-4">
-      <div class="space-y-4">
-        <div class="bg-white rounded-3xl shadow p-5">
-          <h2 class="text-xl font-bold mb-4">Setup</h2>
+<body>
+<button
+    id="exitDisplayButton"
+    class="exit-display-button"
+    type="button"
+>
+    ✕ Exit Display
+</button>
 
-          <div class="flex flex-wrap gap-2">
-            <button class="preset-btn bg-blue-600 text-white rounded-xl px-4 py-2 font-semibold" data-preset="4x4">4x4</button>
-            <button class="preset-btn bg-slate-200 text-slate-800 rounded-xl px-4 py-2 font-semibold" data-preset="5x5">5x5</button>
-            <button class="preset-btn bg-slate-200 text-slate-800 rounded-xl px-4 py-2 font-semibold" data-preset="6x6">6x6</button>
-          </div>
+<div class="page">
+    <header class="title-row">
+        <div>
+            <h1>Timeline Painter</h1>
 
-          <label class="block text-sm font-semibold mt-4">Symbols</label>
-          <input id="symbolsInput" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-blue-500" value="A,B,C,D">
+            <p class="subtitle">
+                Quickly mark matching events with the same number and color.
+            </p>
+        </div>
+    </header>
 
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button id="applyBtn" class="rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white hover:bg-slate-700">Apply symbols</button>
-            <button id="clearBtn" class="rounded-xl bg-rose-600 px-4 py-2 font-semibold text-white hover:bg-rose-500">Clear</button>
-          </div>
+    <section class="panel settings">
+        <div class="field">
+            <label for="rowCount">
+                Number of strips
+            </label>
+
+            <input
+                id="rowCount"
+                type="number"
+                min="1"
+                max="50"
+                value="4"
+            >
         </div>
 
-        <div class="bg-white rounded-3xl shadow p-5">
-          <h2 class="text-xl font-bold mb-4">Palette</h2>
-          <div id="palette" class="flex flex-wrap gap-2"></div>
+        <div class="field">
+            <label for="startTime">
+                Start time
+            </label>
+
+            <input
+                id="startTime"
+                type="time"
+                value="09:00"
+            >
         </div>
 
-        <div class="bg-white rounded-3xl shadow p-5">
-          <h2 class="text-xl font-bold mb-4">Actions</h2>
-          <div class="flex flex-wrap gap-2">
-            <button id="solveBtn" class="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">Solve ?</button>
-            <button id="autofillBtn" class="rounded-xl bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500">Auto-fill singles</button>
-            <button id="copyBtn" class="rounded-xl bg-slate-600 px-4 py-2 font-semibold text-white hover:bg-slate-500">Copy grid</button>
-          </div>
+        <div class="field">
+            <label for="endTime">
+                End time
+            </label>
 
-          <div class="mt-4 rounded-2xl bg-slate-100 p-4">
-            <div class="text-sm font-semibold text-slate-700">Status</div>
-            <div id="status" class="mt-2 text-base text-slate-800">Click a symbol, then click a cell to place it.</div>
-          </div>
+            <input
+                id="endTime"
+                type="time"
+                value="18:00"
+            >
         </div>
 
-        <div class="bg-white rounded-3xl shadow p-5">
-          <h2 class="text-xl font-bold mb-3">How to use</h2>
-          <ol class="list-decimal pl-5 space-y-1 text-sm text-slate-700">
-            <li>Select puzzle size.</li>
-            <li>Set symbols like <code>A,B,C,D</code>.</li>
-            <li>Click a symbol, then click cells to place values.</li>
-            <li>Use <strong>?</strong> for the cell you want solved.</li>
-            <li>Press <strong>Solve ?</strong>.</li>
-          </ol>
-        </div>
-      </div>
+        <div class="field">
+            <label for="interval">
+                Box length
+            </label>
 
-      <div class="bg-white rounded-3xl shadow p-5 lg:col-span-2">
-        <h2 class="text-2xl font-bold mb-6">Puzzle Grid</h2>
-        <div class="grid-wrap">
-          <div id="gridContainer"></div>
+            <select id="interval">
+                <option value="15">
+                    15 minutes
+                </option>
+
+                <option value="30" selected>
+                    30 minutes
+                </option>
+
+                <option value="60">
+                    60 minutes
+                </option>
+            </select>
         </div>
 
-        <div class="mt-8 rounded-2xl bg-slate-50 p-4">
-          <h3 class="font-semibold">Current grid text</h3>
-          <pre id="gridText" class="mt-2 overflow-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100"></pre>
-        </div>
-      </div>
-    </div>
-  </div>
+        <div class="field">
+            <label for="eventCount">
+                Event numbers
+            </label>
 
-  <script>
-    const presets = {
-      "4x4": { size: 4, symbols: ["A", "B", "C", "D"] },
-      "5x5": { size: 5, symbols: ["A", "B", "C", "D", "E"] },
-      "6x6": { size: 6, symbols: ["A", "B", "C", "D", "E", "F"] },
+            <select id="eventCount">
+                <option value="8">1–8</option>
+                <option value="12" selected>1–12</option>
+                <option value="16">1–16</option>
+                <option value="20">1–20</option>
+                <option value="30">1–30</option>
+            </select>
+        </div>
+
+        <button
+            id="generateButton"
+            class="normal-button primary-button"
+            type="button"
+        >
+            Create / Reset Timeline
+        </button>
+    </section>
+
+    <section class="panel toolbar">
+        <div class="toolbar-heading">
+            <strong>
+                Choose a number, then click or drag across boxes
+            </strong>
+
+            <span class="tool-help">
+                Right-click a box to erase it
+            </span>
+        </div>
+
+        <div id="palette" class="palette"></div>
+
+        <div class="action-row">
+            <button
+                id="undoButton"
+                class="normal-button"
+                type="button"
+            >
+                ↶ Undo
+            </button>
+
+            <button
+                id="clearButton"
+                class="normal-button danger-button"
+                type="button"
+            >
+                Clear Boxes
+            </button>
+
+            <div class="display-controls">
+                <div class="field">
+                    <label for="displayOrientation">
+                        Display orientation
+                    </label>
+
+                    <select id="displayOrientation">
+                        <option value="landscape" selected>
+                            Landscape
+                        </option>
+
+                        <option value="portrait">
+                            Portrait
+                        </option>
+                    </select>
+                </div>
+
+                <button
+                    id="displayButton"
+                    class="normal-button display-button"
+                    type="button"
+                >
+                    ⛶ Display Timeline
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel schedule-panel">
+        <div class="schedule-title">
+            <h2>Schedule</h2>
+
+            <div class="selected-indicator">
+                Selected:
+
+                <span
+                    id="selectedSwatch"
+                    class="selected-swatch"
+                >
+                    1
+                </span>
+
+                <span id="selectedText">
+                    Event 1
+                </span>
+            </div>
+        </div>
+
+        <div
+            id="timelineWrapper"
+            class="timeline-wrapper"
+        >
+            <div
+                id="timeline"
+                class="timeline"
+            ></div>
+        </div>
+    </section>
+
+    <div
+        id="status"
+        class="status"
+        aria-live="polite"
+    ></div>
+</div>
+
+<script>
+    const COLORS = [
+        "#fca5a5",
+        "#fdba74",
+        "#fde047",
+        "#86efac",
+        "#5eead4",
+        "#7dd3fc",
+        "#93c5fd",
+        "#c4b5fd",
+        "#f0abfc",
+        "#f9a8d4",
+        "#bef264",
+        "#67e8f9",
+        "#d8b4fe",
+        "#fda4af",
+        "#a7f3d0",
+        "#fed7aa",
+        "#bfdbfe",
+        "#ddd6fe",
+        "#fecdd3",
+        "#bbf7d0",
+        "#bae6fd",
+        "#e9d5ff",
+        "#fde68a",
+        "#99f6e4",
+        "#c7d2fe",
+        "#f5d0fe",
+        "#d9f99d",
+        "#fecaca",
+        "#a5f3fc",
+        "#e2e8f0"
+    ];
+
+    const rowCountInput =
+        document.getElementById("rowCount");
+
+    const startTimeInput =
+        document.getElementById("startTime");
+
+    const endTimeInput =
+        document.getElementById("endTime");
+
+    const intervalInput =
+        document.getElementById("interval");
+
+    const eventCountInput =
+        document.getElementById("eventCount");
+
+    const displayOrientationInput =
+        document.getElementById("displayOrientation");
+
+    const generateButton =
+        document.getElementById("generateButton");
+
+    const undoButton =
+        document.getElementById("undoButton");
+
+    const clearButton =
+        document.getElementById("clearButton");
+
+    const displayButton =
+        document.getElementById("displayButton");
+
+    const exitDisplayButton =
+        document.getElementById("exitDisplayButton");
+
+    const paletteElement =
+        document.getElementById("palette");
+
+    const timelineElement =
+        document.getElementById("timeline");
+
+    const statusElement =
+        document.getElementById("status");
+
+    const selectedSwatch =
+        document.getElementById("selectedSwatch");
+
+    const selectedText =
+        document.getElementById("selectedText");
+
+    let state = {
+        rowCount: 4,
+        startTime: "09:00",
+        endTime: "18:00",
+        interval: 30,
+        eventCount: 12,
+
+        rowNames: [
+            "Strip 1",
+            "Strip 2",
+            "Strip 3",
+            "Strip 4"
+        ],
+
+        cells: []
     };
 
-    let presetKey = "4x4";
-    let size = 4;
-    let symbolsText = "A,B,C,D";
-    let grid = createGrid(size);
-    let selectedTool = "A";
-    let questionCell = null;
+    let selectedEvent = 1;
+    let isPainting = false;
+    let activePointerId = null;
+    let history = [];
 
-    const symbolsInput = document.getElementById("symbolsInput");
-    const paletteEl = document.getElementById("palette");
-    const statusEl = document.getElementById("status");
-    const gridContainer = document.getElementById("gridContainer");
-    const gridText = document.getElementById("gridText");
+    function timeToMinutes(time) {
+        const parts = time.split(":").map(Number);
 
-    function createGrid(n) {
-      return Array.from({ length: n }, () => Array.from({ length: n }, () => ""));
+        return parts[0] * 60 + parts[1];
     }
 
-    function normalizeSymbols(raw, n) {
-      const parts = raw
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
+    function shortTime(minutes) {
+        const normalized =
+            ((minutes % 1440) + 1440) % 1440;
 
-      const unique = [];
-      for (const p of parts) {
-        if (!unique.includes(p)) unique.push(p);
-      }
-      return unique.slice(0, n);
+        const hour24 =
+            Math.floor(normalized / 60);
+
+        const minute =
+            normalized % 60;
+
+        const hour12 =
+            hour24 % 12 || 12;
+
+        const minuteText =
+            minute === 0
+                ? ""
+                : `:${String(minute).padStart(2, "0")}`;
+
+        return `${hour12}${minuteText}`;
     }
 
-    function getSymbols() {
-      return normalizeSymbols(symbolsInput.value, size);
+    function getColumnCount() {
+        const start =
+            timeToMinutes(state.startTime);
+
+        const end =
+            timeToMinutes(state.endTime);
+
+        return Math.floor(
+            (end - start) / state.interval
+        );
     }
 
-    function setStatus(msg) {
-      statusEl.textContent = msg;
+    function makeEmptyCells(rows, columns) {
+        return Array.from(
+            { length: rows },
+            () => Array(columns).fill(0)
+        );
     }
 
-    function getSymbolClass(sym) {
-      if (sym === "?") return "sym-question";
-      if (["A","B","C","D","E","F"].includes(sym)) return `sym-${sym}`;
-      return sym ? "sym-default" : "";
+    function getColor(eventNumber) {
+        return COLORS[
+            (eventNumber - 1) % COLORS.length
+        ];
     }
 
-    function renderPalette() {
-      const syms = getSymbols();
-      paletteEl.innerHTML = "";
+    function setStatus(message, type = "") {
+        statusElement.textContent = message;
+        statusElement.className =
+            `status ${type}`;
 
-      syms.forEach(sym => {
-        const btn = document.createElement("button");
-        btn.className = `palette-btn ${getSymbolClass(sym)} ${selectedTool === sym ? "selected-tool" : ""}`;
-        btn.textContent = sym;
-        btn.onclick = () => {
-          selectedTool = sym;
-          renderPalette();
-        };
-        paletteEl.appendChild(btn);
-      });
+        clearTimeout(setStatus.timeout);
 
-      const qBtn = document.createElement("button");
-      qBtn.className = `palette-btn sym-question ${selectedTool === "?" ? "selected-tool" : ""}`;
-      qBtn.textContent = "?";
-      qBtn.onclick = () => {
-        selectedTool = "?";
-        renderPalette();
-      };
-      paletteEl.appendChild(qBtn);
-
-      const eraseBtn = document.createElement("button");
-      eraseBtn.className = `palette-btn bg-rose-100 text-rose-900 ${selectedTool === "ERASE" ? "selected-tool" : ""}`;
-      eraseBtn.textContent = "Erase";
-      eraseBtn.onclick = () => {
-        selectedTool = "ERASE";
-        renderPalette();
-      };
-      paletteEl.appendChild(eraseBtn);
+        setStatus.timeout = setTimeout(() => {
+            statusElement.textContent = "";
+            statusElement.className = "status";
+        }, 3000);
     }
 
-    function renderGrid() {
-      const wrapper = document.createElement("div");
-      wrapper.style.display = "grid";
-      wrapper.style.gridTemplateColumns = `repeat(${size + 1}, max-content)`;
-      wrapper.style.gap = "12px";
-      wrapper.className = "items-center";
+    function createPalette() {
+        paletteElement.innerHTML = "";
 
-      const corner = document.createElement("div");
-      corner.className = "label";
-      corner.textContent = "";
-      wrapper.appendChild(corner);
+        for (
+            let number = 1;
+            number <= state.eventCount;
+            number++
+        ) {
+            const button =
+                document.createElement("button");
 
-      for (let c = 0; c < size; c++) {
-        const label = document.createElement("div");
-        label.className = "label";
-        label.textContent = `C${c + 1}`;
-        wrapper.appendChild(label);
-      }
+            button.type = "button";
+            button.className = "event-button";
+            button.dataset.event = number;
+            button.textContent = number;
 
-      for (let r = 0; r < size; r++) {
-        const rowLabel = document.createElement("div");
-        rowLabel.className = "label";
-        rowLabel.textContent = `R${r + 1}`;
-        wrapper.appendChild(rowLabel);
+            button.style.backgroundColor =
+                getColor(number);
 
-        for (let c = 0; c < size; c++) {
-          const btn = document.createElement("button");
-          const value = grid[r][c];
-          btn.className = `cell ${getSymbolClass(value)}`;
-          btn.textContent = value;
-          btn.onclick = () => placeInCell(r, c);
-          wrapper.appendChild(btn);
-        }
-      }
+            button.title =
+                `Paint event ${number}`;
 
-      gridContainer.innerHTML = "";
-      gridContainer.appendChild(wrapper);
-      gridText.textContent = grid.map(row => row.join(",")).join("\n");
-    }
-
-    function placeInCell(r, c) {
-      const syms = getSymbols();
-      if (syms.length !== size) {
-        setStatus(`Please enter exactly ${size} unique symbols.`);
-        return;
-      }
-
-      if (selectedTool === "?") {
-        if (questionCell) {
-          const [oldR, oldC] = questionCell;
-          grid[oldR][oldC] = "";
-        }
-        grid[r][c] = "?";
-        questionCell = [r, c];
-        setStatus(`Placed ? at R${r + 1} C${c + 1}.`);
-        renderGrid();
-        return;
-      }
-
-      if (selectedTool === "ERASE") {
-        if (questionCell && questionCell[0] === r && questionCell[1] === c) {
-          questionCell = null;
-        }
-        grid[r][c] = "";
-        setStatus(`Cleared R${r + 1} C${c + 1}.`);
-        renderGrid();
-        return;
-      }
-
-      if (questionCell && questionCell[0] === r && questionCell[1] === c) {
-        questionCell = null;
-      }
-
-      grid[r][c] = selectedTool;
-      setStatus(`Placed ${selectedTool} at R${r + 1} C${c + 1}.`);
-      renderGrid();
-    }
-
-    function hasDuplicateUnits(board, allowed) {
-      const n = board.length;
-
-      for (let r = 0; r < n; r++) {
-        const seen = new Set();
-        for (let c = 0; c < n; c++) {
-          const v = board[r][c];
-          if (allowed.includes(v)) {
-            if (seen.has(v)) return true;
-            seen.add(v);
-          }
-        }
-      }
-
-      for (let c = 0; c < n; c++) {
-        const seen = new Set();
-        for (let r = 0; r < n; r++) {
-          const v = board[r][c];
-          if (allowed.includes(v)) {
-            if (seen.has(v)) return true;
-            seen.add(v);
-          }
-        }
-      }
-
-      return false;
-    }
-
-    function getCandidates(board, r, c, allowed) {
-      if (board[r][c] !== "") return [];
-      const used = new Set();
-
-      for (let i = 0; i < board.length; i++) {
-        if (allowed.includes(board[r][i])) used.add(board[r][i]);
-        if (allowed.includes(board[i][c])) used.add(board[i][c]);
-      }
-
-      return allowed.filter(sym => !used.has(sym));
-    }
-
-    function propagateSingles(board, allowed) {
-      const n = board.length;
-      let changed = true;
-
-      while (changed) {
-        changed = false;
-
-        for (let r = 0; r < n; r++) {
-          for (let c = 0; c < n; c++) {
-            if (board[r][c] === "") {
-              const candidates = getCandidates(board, r, c, allowed);
-
-              if (candidates.length === 0) {
-                return { valid: false, board };
-              }
-
-              if (candidates.length === 1) {
-                board[r][c] = candidates[0];
-                changed = true;
-              }
+            if (selectedEvent === number) {
+                button.classList.add("selected");
             }
-          }
+
+            button.addEventListener("click", () => {
+                selectedEvent = number;
+                updateSelectedTool();
+            });
+
+            paletteElement.appendChild(button);
         }
 
-        for (let r = 0; r < n; r++) {
-          for (const sym of allowed) {
-            let alreadyInRow = false;
-            const spots = [];
-            for (let c = 0; c < n; c++) {
-              if (board[r][c] === sym) {
-                alreadyInRow = true;
-                break;
-              }
-              if (board[r][c] === "" && getCandidates(board, r, c, allowed).includes(sym)) {
-                spots.push([r, c]);
-              }
-            }
-            if (!alreadyInRow && spots.length === 1) {
-              const [sr, sc] = spots[0];
-              board[sr][sc] = sym;
-              changed = true;
-            }
-          }
+        const eraserButton =
+            document.createElement("button");
+
+        eraserButton.type = "button";
+        eraserButton.className = "eraser-button";
+        eraserButton.dataset.event = "0";
+        eraserButton.textContent = "⌫ Eraser";
+
+        if (selectedEvent === 0) {
+            eraserButton.classList.add("selected");
         }
 
-        for (let c = 0; c < n; c++) {
-          for (const sym of allowed) {
-            let alreadyInCol = false;
-            const spots = [];
-            for (let r = 0; r < n; r++) {
-              if (board[r][c] === sym) {
-                alreadyInCol = true;
-                break;
-              }
-              if (board[r][c] === "" && getCandidates(board, r, c, allowed).includes(sym)) {
-                spots.push([r, c]);
-              }
-            }
-            if (!alreadyInCol && spots.length === 1) {
-              const [sr, sc] = spots[0];
-              board[sr][sc] = sym;
-              changed = true;
-            }
-          }
-        }
+        eraserButton.addEventListener("click", () => {
+            selectedEvent = 0;
+            updateSelectedTool();
+        });
 
-        if (hasDuplicateUnits(board, allowed)) {
-          return { valid: false, board };
-        }
-
-        for (let r = 0; r < n; r++) {
-          for (let c = 0; c < n; c++) {
-            if (board[r][c] === "" && getCandidates(board, r, c, allowed).length === 0) {
-              return { valid: false, board };
-            }
-          }
-        }
-      }
-
-      return { valid: true, board };
+        paletteElement.appendChild(eraserButton);
     }
 
-    function isSolved(board, allowed) {
-      const n = board.length;
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          if (!allowed.includes(board[r][c])) return false;
-        }
-      }
-      return !hasDuplicateUnits(board, allowed);
-    }
+    function updateSelectedTool() {
+        document
+            .querySelectorAll(
+                ".event-button, .eraser-button"
+            )
+            .forEach(button => {
+                const buttonValue =
+                    Number(button.dataset.event);
 
-    function chooseBestCell(board, allowed) {
-      let best = null;
+                button.classList.toggle(
+                    "selected",
+                    buttonValue === selectedEvent
+                );
+            });
 
-      for (let r = 0; r < board.length; r++) {
-        for (let c = 0; c < board.length; c++) {
-          if (board[r][c] === "") {
-            const candidates = getCandidates(board, r, c, allowed);
-            if (candidates.length === 0) return { row: r, col: c, candidates };
-            if (!best || candidates.length < best.candidates.length) {
-              best = { row: r, col: c, candidates };
-            }
-          }
-        }
-      }
+        if (selectedEvent === 0) {
+            selectedSwatch.textContent = "⌫";
 
-      return best;
-    }
+            selectedSwatch.style.backgroundColor =
+                "#ffffff";
 
-    function countSolutions(board, allowed, limit = 2) {
-      const working = board.map(row => [...row]);
-      const propagated = propagateSingles(working, allowed);
-
-      if (!propagated.valid) return 0;
-      if (isSolved(propagated.board, allowed)) return 1;
-
-      const choice = chooseBestCell(propagated.board, allowed);
-      if (!choice || choice.candidates.length === 0) return 0;
-
-      let total = 0;
-      for (const sym of choice.candidates) {
-        const next = propagated.board.map(row => [...row]);
-        next[choice.row][choice.col] = sym;
-        total += countSolutions(next, allowed, limit - total);
-        if (total >= limit) return total;
-      }
-      return total;
-    }
-
-    function solveQuestion() {
-      const allowed = getSymbols();
-      if (allowed.length !== size) {
-        setStatus(`Please enter exactly ${size} unique symbols.`);
-        return;
-      }
-
-      if (!questionCell) {
-        setStatus('Place one "?" cell first.');
-        return;
-      }
-
-      const [qr, qc] = questionCell;
-      const board = grid.map(row => row.map(v => v === "?" ? "" : v));
-
-      if (hasDuplicateUnits(board, allowed)) {
-        setStatus("Current grid already has a duplicate in a row or column.");
-        return;
-      }
-
-      const localCandidates = getCandidates(board, qr, qc, allowed);
-      const validAnswers = [];
-
-      for (const sym of localCandidates) {
-        const testBoard = board.map(row => [...row]);
-        testBoard[qr][qc] = sym;
-        const solutions = countSolutions(testBoard, allowed, 1);
-        if (solutions >= 1) {
-          validAnswers.push(sym);
-        }
-      }
-
-      if (validAnswers.length === 0) {
-        setStatus("No valid answer for ?.");
-      } else if (validAnswers.length === 1) {
-        setStatus(`Answer: ${validAnswers[0]} at R${qr + 1} C${qc + 1}.`);
-      } else {
-        setStatus(`Possible answers: ${validAnswers.join(", ")}`);
-      }
-    }
-
-    function autoFillSingles() {
-      const allowed = getSymbols();
-      if (allowed.length !== size) {
-        setStatus(`Please enter exactly ${size} unique symbols.`);
-        return;
-      }
-
-      const board = grid.map(row => row.map(v => v === "?" ? "" : v));
-      const result = propagateSingles(board, allowed);
-
-      if (!result.valid) {
-        setStatus("Grid has a contradiction.");
-        return;
-      }
-
-      grid = result.board.map(row => [...row]);
-      if (questionCell) {
-        const [qr, qc] = questionCell;
-        grid[qr][qc] = "?";
-      }
-
-      setStatus("Auto-fill complete.");
-      renderGrid();
-    }
-
-    function applySymbols() {
-      const allowed = getSymbols();
-      if (allowed.length !== size) {
-        setStatus(`Please enter exactly ${size} unique symbols.`);
-        return;
-      }
-
-      const nextGrid = Array.from({ length: size }, (_, r) =>
-        Array.from({ length: size }, (_, c) => {
-          const v = grid[r]?.[c] ?? "";
-          return v === "?" || allowed.includes(v) ? v : "";
-        })
-      );
-
-      if (questionCell) {
-        const [qr, qc] = questionCell;
-        if (qr >= size || qc >= size) questionCell = null;
-      }
-
-      grid = nextGrid;
-      selectedTool = allowed[0];
-      setStatus("Grid updated.");
-      renderPalette();
-      renderGrid();
-    }
-
-    function clearBoard() {
-      grid = createGrid(size);
-      questionCell = null;
-      setStatus("Board cleared.");
-      renderGrid();
-    }
-
-    function applyPreset(key) {
-      const next = presets[key];
-      presetKey = key;
-      size = next.size;
-      symbolsInput.value = next.symbols.join(",");
-      grid = createGrid(size);
-      questionCell = null;
-      selectedTool = next.symbols[0];
-
-      document.querySelectorAll(".preset-btn").forEach(btn => {
-        if (btn.dataset.preset === key) {
-          btn.className = "preset-btn bg-blue-600 text-white rounded-xl px-4 py-2 font-semibold";
+            selectedText.textContent = "Eraser";
         } else {
-          btn.className = "preset-btn bg-slate-200 text-slate-800 rounded-xl px-4 py-2 font-semibold";
+            selectedSwatch.textContent =
+                selectedEvent;
+
+            selectedSwatch.style.backgroundColor =
+                getColor(selectedEvent);
+
+            selectedText.textContent =
+                `Event ${selectedEvent}`;
         }
-      });
-
-      setStatus(`Loaded ${key}.`);
-      renderPalette();
-      renderGrid();
     }
 
-    async function copyGrid() {
-      const text = grid.map(row => row.join(",")).join("\n");
-      try {
-        await navigator.clipboard.writeText(text);
-        setStatus("Grid copied.");
-      } catch (e) {
-        setStatus("Copy failed. Your browser may block clipboard access.");
-      }
+    function renderTimeline() {
+        const columns = getColumnCount();
+
+        timelineElement.innerHTML = "";
+
+        timelineElement.style.setProperty(
+            "--columns",
+            columns
+        );
+
+        if (columns <= 0) {
+            timelineElement.innerHTML = `
+                <div class="empty-message">
+                    The end time must be later than the
+                    start time.
+                </div>
+            `;
+
+            return;
+        }
+
+        const startMinutes =
+            timeToMinutes(state.startTime);
+
+        const header =
+            document.createElement("div");
+
+        header.className = "timeline-header";
+
+        const corner =
+            document.createElement("div");
+
+        corner.className = "corner";
+        corner.textContent = "STRIP / TIME";
+
+        header.appendChild(corner);
+
+        for (
+            let column = 0;
+            column < columns;
+            column++
+        ) {
+            const start =
+                startMinutes +
+                column * state.interval;
+
+            const end =
+                start + state.interval;
+
+            const label =
+                document.createElement("div");
+
+            label.className = "time-label";
+
+            label.innerHTML = `
+                <span>
+                    ${shortTime(start)}
+                    <br>
+                    <small>–${shortTime(end)}</small>
+                </span>
+            `;
+
+            header.appendChild(label);
+        }
+
+        timelineElement.appendChild(header);
+
+        for (
+            let row = 0;
+            row < state.rowCount;
+            row++
+        ) {
+            const rowElement =
+                document.createElement("div");
+
+            rowElement.className = "timeline-row";
+
+            const nameWrap =
+                document.createElement("div");
+
+            nameWrap.className = "row-name-wrap";
+
+            const nameInput =
+                document.createElement("input");
+
+            nameInput.className = "row-name";
+            nameInput.type = "text";
+
+            nameInput.value =
+                state.rowNames[row] ||
+                `Strip ${row + 1}`;
+
+            nameInput.setAttribute(
+                "aria-label",
+                `Name for strip ${row + 1}`
+            );
+
+            nameInput.addEventListener("input", () => {
+                state.rowNames[row] =
+                    nameInput.value ||
+                    `Strip ${row + 1}`;
+            });
+
+            nameWrap.appendChild(nameInput);
+            rowElement.appendChild(nameWrap);
+
+            for (
+                let column = 0;
+                column < columns;
+                column++
+            ) {
+                const cell =
+                    document.createElement("div");
+
+                const start =
+                    startMinutes +
+                    column * state.interval;
+
+                const eventNumber =
+                    state.cells[row]?.[column] || 0;
+
+                cell.className = "time-cell";
+                cell.dataset.row = row;
+                cell.dataset.column = column;
+
+                if (start % 60 === 0) {
+                    cell.classList.add("hour-start");
+                }
+
+                paintCellAppearance(
+                    cell,
+                    eventNumber
+                );
+
+                cell.addEventListener(
+                    "pointerdown",
+                    event => {
+                        if (event.button !== 0) {
+                            return;
+                        }
+
+                        if (
+                            document.body.classList.contains(
+                                "timeline-display-mode"
+                            )
+                        ) {
+                            return;
+                        }
+
+                        event.preventDefault();
+
+                        pushHistory();
+
+                        isPainting = true;
+                        activePointerId =
+                            event.pointerId;
+
+                        paintCell(
+                            row,
+                            column,
+                            selectedEvent
+                        );
+                    }
+                );
+
+                cell.addEventListener(
+                    "pointerenter",
+                    event => {
+                        if (
+                            isPainting &&
+                            event.pointerId ===
+                                activePointerId
+                        ) {
+                            paintCell(
+                                row,
+                                column,
+                                selectedEvent
+                            );
+                        }
+                    }
+                );
+
+                cell.addEventListener(
+                    "contextmenu",
+                    event => {
+                        event.preventDefault();
+
+                        if (
+                            document.body.classList.contains(
+                                "timeline-display-mode"
+                            )
+                        ) {
+                            return;
+                        }
+
+                        if (
+                            state.cells[row][column] === 0
+                        ) {
+                            return;
+                        }
+
+                        pushHistory();
+                        paintCell(row, column, 0);
+                    }
+                );
+
+                rowElement.appendChild(cell);
+            }
+
+            timelineElement.appendChild(
+                rowElement
+            );
+        }
     }
 
-    document.querySelectorAll(".preset-btn").forEach(btn => {
-      btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
-    });
+    function paintCellAppearance(
+        cell,
+        eventNumber
+    ) {
+        if (!eventNumber) {
+            cell.textContent = "";
 
-    document.getElementById("applyBtn").addEventListener("click", applySymbols);
-    document.getElementById("clearBtn").addEventListener("click", clearBoard);
-    document.getElementById("solveBtn").addEventListener("click", solveQuestion);
-    document.getElementById("autofillBtn").addEventListener("click", autoFillSingles);
-    document.getElementById("copyBtn").addEventListener("click", copyGrid);
+            cell.style.backgroundColor =
+                "#ffffff";
 
-    renderPalette();
-    renderGrid();
-  </script>
+            cell.removeAttribute("data-filled");
 
+            return;
+        }
 
-</body></html>
+        cell.textContent = eventNumber;
+
+        cell.style.backgroundColor =
+            getColor(eventNumber);
+
+        cell.dataset.filled = "true";
+    }
+
+    function paintCell(
+        row,
+        column,
+        eventNumber
+    ) {
+        if (
+            state.cells[row][column] ===
+            eventNumber
+        ) {
+            return;
+        }
+
+        state.cells[row][column] =
+            eventNumber;
+
+        const cell =
+            timelineElement.querySelector(
+                `.time-cell[data-row="${row}"]` +
+                `[data-column="${column}"]`
+            );
+
+        if (cell) {
+            paintCellAppearance(
+                cell,
+                eventNumber
+            );
+        }
+    }
+
+    function pushHistory() {
+        history.push(
+            JSON.stringify(state.cells)
+        );
+
+        if (history.length > 50) {
+            history.shift();
+        }
+    }
+
+    function undo() {
+        if (history.length === 0) {
+            setStatus("Nothing to undo.");
+            return;
+        }
+
+        state.cells =
+            JSON.parse(history.pop());
+
+        renderTimeline();
+
+        setStatus(
+            "Last change undone.",
+            "success"
+        );
+    }
+
+    function clearTimeline() {
+        const containsEvents =
+            state.cells.some(row =>
+                row.some(value => value !== 0)
+            );
+
+        if (!containsEvents) {
+            setStatus(
+                "The timeline is already empty."
+            );
+
+            return;
+        }
+
+        const confirmed = confirm(
+            "Clear all numbered boxes? " +
+            "Strip names and time settings will remain."
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        pushHistory();
+
+        state.cells = makeEmptyCells(
+            state.rowCount,
+            getColumnCount()
+        );
+
+        renderTimeline();
+
+        setStatus(
+            "All boxes cleared.",
+            "success"
+        );
+    }
+
+    function generateTimeline() {
+        const rows =
+            Number(rowCountInput.value);
+
+        const interval =
+            Number(intervalInput.value);
+
+        const start =
+            startTimeInput.value;
+
+        const end =
+            endTimeInput.value;
+
+        const eventCount =
+            Number(eventCountInput.value);
+
+        if (
+            !Number.isInteger(rows) ||
+            rows < 1 ||
+            rows > 50
+        ) {
+            setStatus(
+                "Enter between 1 and 50 timeline strips.",
+                "error"
+            );
+
+            return;
+        }
+
+        if (
+            !start ||
+            !end ||
+            timeToMinutes(end) <=
+                timeToMinutes(start)
+        ) {
+            setStatus(
+                "The end time must be later than the start time.",
+                "error"
+            );
+
+            return;
+        }
+
+        const duration =
+            timeToMinutes(end) -
+            timeToMinutes(start);
+
+        if (duration % interval !== 0) {
+            setStatus(
+                "The time range must divide evenly " +
+                "into the selected box length.",
+                "error"
+            );
+
+            return;
+        }
+
+        const hasData =
+            state.cells.some(row =>
+                row.some(value => value !== 0)
+            );
+
+        if (hasData) {
+            const confirmed = confirm(
+                "Creating a new timeline will clear " +
+                "the current boxes. Continue?"
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        const oldNames =
+            [...state.rowNames];
+
+        state = {
+            rowCount: rows,
+            startTime: start,
+            endTime: end,
+            interval,
+            eventCount,
+
+            rowNames: Array.from(
+                { length: rows },
+                (_, index) =>
+                    oldNames[index] ||
+                    `Strip ${index + 1}`
+            ),
+
+            cells: makeEmptyCells(
+                rows,
+                duration / interval
+            )
+        };
+
+        if (selectedEvent > eventCount) {
+            selectedEvent = 1;
+        }
+
+        history = [];
+
+        createPalette();
+        renderTimeline();
+        updateSelectedTool();
+
+        setStatus(
+            "New timeline created.",
+            "success"
+        );
+    }
+
+    function applyDisplayOrientation() {
+        const portrait =
+            displayOrientationInput.value ===
+            "portrait";
+
+        document.body.classList.toggle(
+            "display-portrait",
+            portrait
+        );
+
+        document.body.classList.toggle(
+            "display-landscape",
+            !portrait
+        );
+    }
+
+    function enterDisplayMode() {
+        const columns = getColumnCount();
+
+        if (columns <= 0) {
+            setStatus(
+                "Create a valid timeline before displaying it.",
+                "error"
+            );
+
+            return;
+        }
+
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+
+        isPainting = false;
+        activePointerId = null;
+
+        applyDisplayOrientation();
+
+        document.body.classList.add(
+            "timeline-display-mode"
+        );
+
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: "auto"
+        });
+
+        exitDisplayButton.focus();
+    }
+
+    function exitDisplayMode() {
+        document.body.classList.remove(
+            "timeline-display-mode",
+            "display-landscape",
+            "display-portrait"
+        );
+
+        displayButton.focus();
+    }
+
+    function initializeTimeline() {
+        const columns =
+            (
+                timeToMinutes(state.endTime) -
+                timeToMinutes(state.startTime)
+            ) / state.interval;
+
+        state.cells = makeEmptyCells(
+            state.rowCount,
+            columns
+        );
+
+        rowCountInput.value =
+            state.rowCount;
+
+        startTimeInput.value =
+            state.startTime;
+
+        endTimeInput.value =
+            state.endTime;
+
+        intervalInput.value =
+            state.interval;
+
+        eventCountInput.value =
+            state.eventCount;
+
+        createPalette();
+        renderTimeline();
+        updateSelectedTool();
+    }
+
+    document.addEventListener(
+        "pointerup",
+        event => {
+            if (
+                isPainting &&
+                (
+                    activePointerId === null ||
+                    event.pointerId ===
+                        activePointerId
+                )
+            ) {
+                isPainting = false;
+                activePointerId = null;
+            }
+        }
+    );
+
+    document.addEventListener(
+        "pointercancel",
+        () => {
+            isPainting = false;
+            activePointerId = null;
+        }
+    );
+
+    generateButton.addEventListener(
+        "click",
+        generateTimeline
+    );
+
+    undoButton.addEventListener(
+        "click",
+        undo
+    );
+
+    clearButton.addEventListener(
+        "click",
+        clearTimeline
+    );
+
+    displayButton.addEventListener(
+        "click",
+        enterDisplayMode
+    );
+
+    exitDisplayButton.addEventListener(
+        "click",
+        exitDisplayMode
+    );
+
+    displayOrientationInput.addEventListener(
+        "change",
+        () => {
+            if (
+                document.body.classList.contains(
+                    "timeline-display-mode"
+                )
+            ) {
+                applyDisplayOrientation();
+            }
+        }
+    );
+
+    document.addEventListener(
+        "keydown",
+        event => {
+            const displayModeActive =
+                document.body.classList.contains(
+                    "timeline-display-mode"
+                );
+
+            if (
+                event.key === "Escape" &&
+                displayModeActive
+            ) {
+                event.preventDefault();
+                exitDisplayMode();
+                return;
+            }
+
+            if (displayModeActive) {
+                return;
+            }
+
+            const activeTag =
+                document.activeElement?.tagName;
+
+            if (
+                (event.ctrlKey || event.metaKey) &&
+                event.key.toLowerCase() === "z" &&
+                activeTag !== "INPUT"
+            ) {
+                event.preventDefault();
+                undo();
+            }
+
+            if (
+                event.key.toLowerCase() === "e" &&
+                activeTag !== "INPUT" &&
+                activeTag !== "SELECT"
+            ) {
+                selectedEvent = 0;
+                updateSelectedTool();
+            }
+
+            if (
+                /^[1-9]$/.test(event.key) &&
+                activeTag !== "INPUT" &&
+                activeTag !== "SELECT"
+            ) {
+                const number =
+                    Number(event.key);
+
+                if (
+                    number <= state.eventCount
+                ) {
+                    selectedEvent = number;
+                    updateSelectedTool();
+                }
+            }
+        }
+    );
+
+    /*
+     * No localStorage or other persistent browser
+     * storage is used anywhere in this application.
+     */
+    initializeTimeline();
+</script>
+</body>
+</html>
