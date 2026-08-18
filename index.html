@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Program Hub</title>
+
+  <style>
+    :root {
+      --header-height: 64px;
+      --sidebar-expanded-width: 260px;
+      --sidebar-collapsed-width: 76px;
+
+      --background: #f3f4f6;
+      --sidebar: #111827;
+      --sidebar-hover: #1f2937;
+      --active: #2563eb;
+      --text-light: #f9fafb;
+      --text-muted: #9ca3af;
+      --border: #d1d5db;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--background);
+    }
+
+    button {
+      font: inherit;
+    }
+
+    /* ==========================================================
+       HEADER
+       ========================================================== */
+
+    .app-header {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+
+      z-index: 100;
+
+      height: var(--header-height);
+      padding: 0 18px;
+
+      display: flex;
+      align-items: center;
+      gap: 14px;
+
+      color: white;
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
+    }
+
+    .menu-button {
+      flex: 0 0 auto;
+
+      width: 42px;
+      height: 42px;
+
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      color: white;
+      font-size: 22px;
+
+      background: transparent;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .menu-button:hover {
+      background: #1e293b;
+    }
+
+    .menu-button:focus-visible,
+    .navigation-button:focus-visible {
+      outline: 3px solid #93c5fd;
+      outline-offset: 2px;
+    }
+
+    .app-title {
+      min-width: 0;
+      margin: 0;
+
+      font-size: 20px;
+      white-space: nowrap;
+    }
+
+    .current-page-title {
+      min-width: 0;
+      margin-left: auto;
+
+      color: #cbd5e1;
+      font-size: 14px;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ==========================================================
+       SIDEBAR
+       ========================================================== */
+
+    .sidebar {
+      position: fixed;
+      top: var(--header-height);
+      bottom: 0;
+      left: 0;
+
+      z-index: 90;
+
+      width: var(--sidebar-expanded-width);
+      padding: 16px 12px;
+
+      overflow-x: hidden;
+      overflow-y: auto;
+
+      background: var(--sidebar);
+
+      transition:
+        width 0.2s ease,
+        transform 0.2s ease;
+    }
+
+    .sidebar-label {
+      margin: 0 10px 12px;
+
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+
+      white-space: nowrap;
+    }
+
+    .navigation {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .navigation-button {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px 12px;
+
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      color: var(--text-light);
+      text-align: left;
+
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+
+      transition:
+        background-color 0.15s ease,
+        padding 0.2s ease;
+    }
+
+    .navigation-button:hover {
+      background: var(--sidebar-hover);
+    }
+
+    .navigation-button.active {
+      background: var(--active);
+    }
+
+    .navigation-icon {
+      flex: 0 0 28px;
+      width: 28px;
+
+      font-size: 21px;
+      text-align: center;
+    }
+
+    .navigation-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ==========================================================
+       COLLAPSED DESKTOP SIDEBAR
+       ========================================================== */
+
+    .sidebar.collapsed {
+      width: var(--sidebar-collapsed-width);
+    }
+
+    .sidebar.collapsed .sidebar-label {
+      display: none;
+    }
+
+    .sidebar.collapsed .navigation-button {
+      padding-right: 12px;
+      padding-left: 12px;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .sidebar.collapsed .navigation-text {
+      display: none;
+    }
+
+    /* ==========================================================
+       MAIN CONTENT
+       ========================================================== */
+
+    .main-content {
+      position: fixed;
+      top: var(--header-height);
+      right: 0;
+      bottom: 0;
+      left: var(--sidebar-expanded-width);
+
+      overflow: hidden;
+      background: white;
+
+      transition: left 0.2s ease;
+    }
+
+    .main-content.sidebar-collapsed {
+      left: var(--sidebar-collapsed-width);
+    }
+
+    .program-page {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .program-page.active {
+      display: block;
+    }
+
+    .program-frame {
+      display: block;
+      width: 100%;
+      height: 100%;
+
+      background: white;
+      border: 0;
+    }
+
+    /* ==========================================================
+       PLACEHOLDER
+       ========================================================== */
+
+    .placeholder-page {
+      width: 100%;
+      height: 100%;
+      padding: 30px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      overflow-y: auto;
+      background: var(--background);
+    }
+
+    .placeholder-card {
+      width: min(680px, 100%);
+      padding: 38px;
+
+      text-align: center;
+
+      background: white;
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      box-shadow: 0 8px 25px rgb(0 0 0 / 8%);
+    }
+
+    .placeholder-icon {
+      margin-bottom: 18px;
+      font-size: 58px;
+    }
+
+    .placeholder-card h2 {
+      margin: 0 0 12px;
+      color: #111827;
+    }
+
+    .placeholder-card p {
+      margin: 8px 0;
+
+      color: #4b5563;
+      line-height: 1.6;
+    }
+
+    .placeholder-card code {
+      padding: 3px 7px;
+
+      color: #1d4ed8;
+      background: #eff6ff;
+      border-radius: 5px;
+    }
+
+    /* ==========================================================
+       MOBILE OVERLAY
+       ========================================================== */
+
+    .sidebar-overlay {
+      position: fixed;
+      inset: var(--header-height) 0 0 0;
+
+      z-index: 80;
+
+      display: none;
+      background: rgb(0 0 0 / 45%);
+    }
+
+    .sidebar-overlay.visible {
+      display: block;
+    }
+
+    /* ==========================================================
+       MOBILE LAYOUT
+       ========================================================== */
+
+    @media (max-width: 760px) {
+      /*
+       * On mobile, the sidebar is either fully open or fully closed.
+       * The narrow icon-only mode is used only on desktop.
+       */
+
+      .sidebar,
+      .sidebar.collapsed {
+        width: min(var(--sidebar-expanded-width), 85vw);
+        transform: translateX(-100%);
+        box-shadow: 4px 0 20px rgb(0 0 0 / 25%);
+      }
+
+      .sidebar.open,
+      .sidebar.collapsed.open {
+        transform: translateX(0);
+      }
+
+      .sidebar.collapsed .sidebar-label {
+        display: block;
+      }
+
+      .sidebar.collapsed .navigation-button {
+        padding: 10px 12px;
+        justify-content: flex-start;
+        gap: 12px;
+      }
+
+      .sidebar.collapsed .navigation-text {
+        display: inline;
+      }
+
+      .main-content,
+      .main-content.sidebar-collapsed {
+        left: 0;
+      }
+
+      .placeholder-page {
+        padding: 18px;
+      }
+
+      .placeholder-card {
+        padding: 26px 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="app-header">
+    <button
+      id="menuButton"
+      class="menu-button"
+      type="button"
+      aria-label="Minimize sidebar"
+      aria-expanded="true"
+      title="Minimize sidebar"
+    >
+      ☰
+    </button>
+
+    <h1 class="app-title">Program Hub</h1>
+
+    <div
+      id="currentPageTitle"
+      class="current-page-title"
+      aria-live="polite"
+    ></div>
+  </header>
+
+  <aside
+    id="sidebar"
+    class="sidebar"
+    aria-label="Program navigation"
+  >
+    <p class="sidebar-label">Programs</p>
+
+    <nav
+      id="navigation"
+      class="navigation"
+    ></nav>
+  </aside>
+
+  <div
+    id="sidebarOverlay"
+    class="sidebar-overlay"
+    aria-hidden="true"
+  ></div>
+
+  <main
+    id="mainContent"
+    class="main-content"
+  ></main>
+
+  <script>
+    "use strict";
+
+    /*
+     * ============================================================
+     * PAGE CONFIGURATION
+     * ============================================================
+     *
+     * To add another program:
+     *
+     * {
+     *   id: "my-program",
+     *   title: "My Program",
+     *   icon: "⭐",
+     *   src: "My_Program.html"
+     * }
+     */
+
+    const pages = [
+      {
+        id: "timeline-painter",
+        title: "Timeline Painter",
+        icon: "🕒",
+        src: "Timeline_Painter.html"
+      },
+      {
+        id: "shape-puzzle-solver",
+        title: "Shape Puzzle Solver",
+        icon: "🔷",
+        src: "Square_Unknown_Solver.html"
+      },
+      {
+        id: "placeholder",
+        title: "New Program Placeholder",
+        icon: "➕",
+        placeholder: true
+      }
+    ];
+
+    /*
+     * No information is written to:
+     *
+     * - localStorage
+     * - sessionStorage
+     * - IndexedDB
+     * - cookies
+     *
+     * The selected page and sidebar state remain only in memory.
+     * They reset whenever this hub page is reloaded.
+     */
+
+    let selectedPageId = pages[0].id;
+    let desktopSidebarCollapsed = false;
+    let mobileSidebarOpen = false;
+
+    const mobileBreakpoint = window.matchMedia(
+      "(max-width: 760px)"
+    );
+
+    const navigation =
+      document.getElementById("navigation");
+
+    const mainContent =
+      document.getElementById("mainContent");
+
+    const currentPageTitle =
+      document.getElementById("currentPageTitle");
+
+    const menuButton =
+      document.getElementById("menuButton");
+
+    const sidebar =
+      document.getElementById("sidebar");
+
+    const sidebarOverlay =
+      document.getElementById("sidebarOverlay");
+
+    /*
+     * ============================================================
+     * CREATE NAVIGATION
+     * ============================================================
+     */
+
+    function createNavigationButton(page) {
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "navigation-button";
+      button.dataset.pageId = page.id;
+      button.setAttribute(
+        "aria-controls",
+        `page-${page.id}`
+      );
+
+      /*
+       * The title allows users to see the program name when the
+       * desktop sidebar is minimized to icons.
+       */
+      button.title = page.title;
+
+      const icon = document.createElement("span");
+
+      icon.className = "navigation-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = page.icon || "📄";
+
+      const text = document.createElement("span");
+
+      text.className = "navigation-text";
+      text.textContent = page.title;
+
+      button.append(icon, text);
+
+      button.addEventListener("click", function () {
+        showPage(page.id);
+
+        if (mobileBreakpoint.matches) {
+          closeMobileSidebar();
+        }
+      });
+
+      return button;
+    }
+
+    /*
+     * ============================================================
+     * CREATE PROGRAM PAGES
+     * ============================================================
+     */
+
+    function createProgramPage(page) {
+      const section = document.createElement("section");
+
+      section.id = `page-${page.id}`;
+      section.className = "program-page";
+      section.dataset.pageId = page.id;
+      section.setAttribute("aria-label", page.title);
+
+      if (page.placeholder) {
+        section.appendChild(
+          createPlaceholderContent()
+        );
+      } else {
+        const iframe = document.createElement("iframe");
+
+        iframe.className = "program-frame";
+        iframe.src = page.src;
+        iframe.title = page.title;
+
+        /*
+         * Each program runs in its own document so its CSS,
+         * element IDs, and JavaScript variables do not conflict
+         * with the other programs.
+         */
+        iframe.setAttribute(
+          "allow",
+          "clipboard-read; clipboard-write; fullscreen"
+        );
+
+        section.appendChild(iframe);
+      }
+
+      return section;
+    }
+
+    function createPlaceholderContent() {
+      const wrapper = document.createElement("div");
+      wrapper.className = "placeholder-page";
+
+      const card = document.createElement("div");
+      card.className = "placeholder-card";
+
+      card.innerHTML = `
+        <div
+          class="placeholder-icon"
+          aria-hidden="true"
+        >
+          📄
+        </div>
+
+        <h2>New Program Placeholder</h2>
+
+        <p>
+          This page is reserved for a future HTML program.
+        </p>
+
+        <p>
+          Add the program file to this folder and add its
+          information to the <code>pages</code> array.
+        </p>
+
+        <p>For example:</p>
+
+        <p>
+          <code>src: "My_New_Program.html"</code>
+        </p>
+      `;
+
+      wrapper.appendChild(card);
+
+      return wrapper;
+    }
+
+    /*
+     * ============================================================
+     * PAGE SWITCHING
+     * ============================================================
+     */
+
+    function showPage(pageId) {
+      const requestedPage = pages.find(function (page) {
+        return page.id === pageId;
+      });
+
+      if (!requestedPage) {
+        console.error(`Page not found: ${pageId}`);
+        return;
+      }
+
+      selectedPageId = pageId;
+
+      document
+        .querySelectorAll(".program-page")
+        .forEach(function (pageElement) {
+          const isActive =
+            pageElement.dataset.pageId === pageId;
+
+          pageElement.classList.toggle(
+            "active",
+            isActive
+          );
+
+          pageElement.hidden = !isActive;
+        });
+
+      document
+        .querySelectorAll(".navigation-button")
+        .forEach(function (button) {
+          const isActive =
+            button.dataset.pageId === pageId;
+
+          button.classList.toggle(
+            "active",
+            isActive
+          );
+
+          if (isActive) {
+            button.setAttribute(
+              "aria-current",
+              "page"
+            );
+          } else {
+            button.removeAttribute("aria-current");
+          }
+        });
+
+      currentPageTitle.textContent =
+        requestedPage.title;
+
+      document.title =
+        `${requestedPage.title} — Program Hub`;
+    }
+
+    /*
+     * ============================================================
+     * DESKTOP SIDEBAR
+     * ============================================================
+     */
+
+    function toggleDesktopSidebar() {
+      desktopSidebarCollapsed =
+        !desktopSidebarCollapsed;
+
+      applySidebarState();
+    }
+
+    /*
+     * ============================================================
+     * MOBILE SIDEBAR
+     * ============================================================
+     */
+
+    function openMobileSidebar() {
+      mobileSidebarOpen = true;
+      applySidebarState();
+    }
+
+    function closeMobileSidebar() {
+      mobileSidebarOpen = false;
+      applySidebarState();
+    }
+
+    function toggleMobileSidebar() {
+      mobileSidebarOpen = !mobileSidebarOpen;
+      applySidebarState();
+    }
+
+    /*
+     * Apply the correct sidebar behavior for desktop or mobile.
+     */
+
+    function applySidebarState() {
+      const isMobile = mobileBreakpoint.matches;
+
+      if (isMobile) {
+        /*
+         * Remove desktop visual state while on mobile.
+         */
+        sidebar.classList.remove("collapsed");
+        mainContent.classList.remove(
+          "sidebar-collapsed"
+        );
+
+        sidebar.classList.toggle(
+          "open",
+          mobileSidebarOpen
+        );
+
+        sidebarOverlay.classList.toggle(
+          "visible",
+          mobileSidebarOpen
+        );
+
+        sidebarOverlay.setAttribute(
+          "aria-hidden",
+          String(!mobileSidebarOpen)
+        );
+
+        menuButton.setAttribute(
+          "aria-expanded",
+          String(mobileSidebarOpen)
+        );
+
+        menuButton.setAttribute(
+          "aria-label",
+          mobileSidebarOpen
+            ? "Close program menu"
+            : "Open program menu"
+        );
+
+        menuButton.title = mobileSidebarOpen
+          ? "Close program menu"
+          : "Open program menu";
+
+        menuButton.textContent =
+          mobileSidebarOpen ? "✕" : "☰";
+      } else {
+        /*
+         * Mobile sidebar must not remain open after returning
+         * to the desktop layout.
+         */
+        mobileSidebarOpen = false;
+
+        sidebar.classList.remove("open");
+        sidebarOverlay.classList.remove("visible");
+
+        sidebarOverlay.setAttribute(
+          "aria-hidden",
+          "true"
+        );
+
+        sidebar.classList.toggle(
+          "collapsed",
+          desktopSidebarCollapsed
+        );
+
+        mainContent.classList.toggle(
+          "sidebar-collapsed",
+          desktopSidebarCollapsed
+        );
+
+        const actionText = desktopSidebarCollapsed
+          ? "Expand sidebar"
+          : "Minimize sidebar";
+
+        menuButton.setAttribute(
+          "aria-expanded",
+          String(!desktopSidebarCollapsed)
+        );
+
+        menuButton.setAttribute(
+          "aria-label",
+          actionText
+        );
+
+        menuButton.title = actionText;
+
+        /*
+         * Right arrow means expand.
+         * Left arrow means minimize.
+         */
+        menuButton.textContent =
+          desktopSidebarCollapsed ? "▶" : "◀";
+      }
+    }
+
+    /*
+     * ============================================================
+     * EVENT HANDLERS
+     * ============================================================
+     */
+
+    menuButton.addEventListener("click", function () {
+      if (mobileBreakpoint.matches) {
+        toggleMobileSidebar();
+      } else {
+        toggleDesktopSidebar();
+      }
+    });
+
+    sidebarOverlay.addEventListener(
+      "click",
+      closeMobileSidebar
+    );
+
+    document.addEventListener("keydown", function (event) {
+      if (
+        event.key === "Escape" &&
+        mobileBreakpoint.matches &&
+        mobileSidebarOpen
+      ) {
+        closeMobileSidebar();
+        menuButton.focus();
+      }
+    });
+
+    /*
+     * Respond immediately when the screen crosses the mobile
+     * breakpoint.
+     */
+    if (typeof mobileBreakpoint.addEventListener === "function") {
+      mobileBreakpoint.addEventListener(
+        "change",
+        applySidebarState
+      );
+    } else {
+      /*
+       * Compatibility for some older browsers.
+       */
+      mobileBreakpoint.addListener(
+        applySidebarState
+      );
+    }
+
+    /*
+     * ============================================================
+     * START APPLICATION
+     * ============================================================
+     */
+
+    function buildApplication() {
+      pages.forEach(function (page) {
+        navigation.appendChild(
+          createNavigationButton(page)
+        );
+
+        mainContent.appendChild(
+          createProgramPage(page)
+        );
+      });
+
+      showPage(selectedPageId);
+      applySidebarState();
+    }
+
+    buildApplication();
+  </script>
+</body>
+</html>
